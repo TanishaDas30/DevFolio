@@ -1,280 +1,248 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import List, Optional, Dict, Any
-from datetime import datetime
+import datetime
+from typing import List, Dict, Optional, Any
+from pydantic import BaseModel, Field
 
-# --- Auth & User Schemas ---
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: str
-    full_name: str
-    skin_type: Optional[str] = "Combination"
-    skin_concerns: Optional[List[str]] = []
-    hair_type: Optional[str] = "Wavy / Medium"
-    scalp_type: Optional[str] = "Oily Scalp"
-    hair_concerns: Optional[List[str]] = []
+# --- GitHub Profile Schemas ---
 
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
+class GitHubProfileResponse(BaseModel):
+    id: int
+    github_username: str
+    name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    company: Optional[str] = None
+    location: Optional[str] = None
+    blog: Optional[str] = None
+    twitter_username: Optional[str] = None
+    public_repos: int = 0
+    public_gists: int = 0
+    followers: int = 0
+    following: int = 0
+    total_stars: int = 0
+    total_forks: int = 0
+    developer_score: float = 0.0
+    github_profile_url: str
+    last_synced_at: Optional[datetime.datetime] = None
+    is_cached: bool = False
+    rate_limit_remaining: Optional[int] = None
 
-class UserUpdate(BaseModel):
+    class Config:
+        from_attributes = True
+
+
+# --- Repository Schemas ---
+
+class RepositoryResponse(BaseModel):
+    id: int
+    github_repo_id: Optional[int] = None
+    name: str
     full_name: Optional[str] = None
-    skin_type: Optional[str] = None
-    skin_concerns: Optional[List[str]] = None
-    hair_type: Optional[str] = None
-    scalp_type: Optional[str] = None
-    hair_concerns: Optional[List[str]] = None
-
-class UserProfileResponse(BaseModel):
-    id: int
-    email: str
-    full_name: str
-    role: str
-    skin_type: str
-    skin_concerns: List[str]
-    hair_type: str
-    scalp_type: str
-    hair_concerns: List[str]
-    created_at: datetime
+    description: Optional[str] = None
+    language: Optional[str] = None
+    stars: int = 0
+    forks: int = 0
+    open_issues: int = 0
+    watchers: int = 0
+    topics: List[str] = Field(default_factory=list)
+    is_fork: bool = False
+    is_archived: bool = False
+    updated_at: Optional[datetime.datetime] = None
+    created_at_gh: Optional[datetime.datetime] = None
+    repository_url: str
+    homepage: Optional[str] = None
+    byte_languages: Dict[str, int] = Field(default_factory=dict)
+    cached_at: Optional[datetime.datetime] = None
 
     class Config:
         from_attributes = True
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    user: UserProfileResponse
+
+class RepositoryListResponse(BaseModel):
+    username: str
+    total_repositories: int
+    languages: List[str]
+    repositories: List[RepositoryResponse]
 
 
-# --- Product Schemas ---
-class ActiveIngredientItem(BaseModel):
+# --- Contribution & Streak Schemas ---
+
+class ContributionDay(BaseModel):
+    date: str  # YYYY-MM-DD
+    count: int
+    weekday: int  # 0 to 6
+    intensity: int  # 0 to 4
+
+
+class ContributionWeek(BaseModel):
+    days: List[ContributionDay]
+
+
+class ContributionResponse(BaseModel):
+    username: str
+    total_contributions: int
+    current_streak: int
+    longest_streak: int
+    active_days: int
+    weeks: List[ContributionWeek]
+    calendar_start: str
+    calendar_end: str
+    is_cached: bool = False
+
+
+# --- Language Analytics Schemas ---
+
+class LanguageStat(BaseModel):
     name: str
-    percentage: Optional[str] = ""
-    purpose: Optional[str] = ""
+    bytes: int
+    percentage: float
+    color: str
+    repo_count: int
 
-class ProductBase(BaseModel):
+
+class LanguageAnalyticsResponse(BaseModel):
+    username: str
+    total_bytes: int
+    total_languages: int
+    languages: List[LanguageStat]
+    dominant_language: Optional[str] = None
+
+
+# --- Growth Insights Schemas ---
+
+class MonthlyTrend(BaseModel):
+    month: str  # e.g., "Jan 2026"
+    contributions: int
+    repo_creations: int
+
+
+class DayOfWeekStat(BaseModel):
+    day: str  # "Sun", "Mon", etc.
+    day_index: int
+    contributions: int
+    percentage: float
+
+
+class RepoGrowthPoint(BaseModel):
+    date: str  # YYYY-MM
+    cumulative_repos: int
+
+
+class GrowthInsightsResponse(BaseModel):
+    username: str
+    most_productive_month: str
+    most_productive_month_count: int
+    most_active_day: str
+    most_active_day_percentage: float
+    average_contributions_per_week: float
+    current_streak: int
+    longest_streak: int
+    total_contributions: int
+    monthly_trends: List[MonthlyTrend]
+    day_of_week_stats: List[DayOfWeekStat]
+    repo_growth_history: List[RepoGrowthPoint]
+    top_languages_by_volume: List[str]
+    insights_narrative: List[str]
+
+
+# --- Vibe Check / Tech Stack Compatibility Schemas ---
+
+class CompatibilityAnalyzeRequest(BaseModel):
+    username: str
+    job_description: str = Field(..., min_length=15, description="Full job description text")
+    job_title: Optional[str] = Field("Software Engineer", description="Optional job title")
+    company: Optional[str] = Field("", description="Optional company name")
+
+
+class SkillEvidence(BaseModel):
     name: str
-    brand: Optional[str] = "Be Bodywise"
-    category: str  # skincare, haircare, bodycare
-    subcategory: Optional[str] = ""
-    description: Optional[str] = ""
-    active_ingredients: List[ActiveIngredientItem] = []
-    full_ingredients: Optional[str] = ""
-    instructions: Optional[str] = ""
-    precautions: Optional[str] = ""
-    pH_level: Optional[str] = "5.5"
-    recommended_time: Optional[str] = "PM"  # AM, PM, BOTH
-    frequency: Optional[str] = "Daily"
-    is_verified: Optional[bool] = True
-    image_url: Optional[str] = None
-
-class ProductCreate(ProductBase):
-    pass
-
-class ProductResponse(ProductBase):
-    id: int
-
-    class Config:
-        from_attributes = True
+    category: str  # "Languages", "Frontend", "Backend", "Databases", "DevOps/Cloud", "AI/ML", "Tools"
+    demonstrated: bool  # True if code/repo proved, False if inferred or missing
+    weight: float
+    evidence: List[str]  # e.g., ["Used in 4 repos: my-repo (Python)", "Repo topic: fastapi"]
 
 
-# --- User Product Schemas ---
-class UserProductCreate(BaseModel):
-    product_id: int
-    purchased_for_concern: Optional[str] = None
-    application_time: Optional[str] = "PM"
-    frequency: Optional[str] = "Daily"
-    notes: Optional[str] = None
-
-class UserProductUpdate(BaseModel):
-    is_active: Optional[bool] = None
-    purchased_for_concern: Optional[str] = None
-    application_time: Optional[str] = None
-    frequency: Optional[str] = None
-    notes: Optional[str] = None
-
-class UserProductResponse(BaseModel):
-    id: int
-    user_id: int
-    product_id: int
-    is_active: bool
-    purchased_for_concern: Optional[str]
-    application_time: str
-    frequency: str
-    notes: Optional[str]
-    added_at: datetime
-    product: ProductResponse
-
-    class Config:
-        from_attributes = True
+class CategoryScore(BaseModel):
+    category: str
+    required_count: int
+    matched_count: int
+    score_percentage: float
 
 
-# --- Product Experience Schemas ---
-class ExperienceCreate(BaseModel):
-    product_id: int
-    natural_language_feedback: str
-    duration_weeks: Optional[int] = 3
-    frequency_used: Optional[str] = "Daily"
-    primary_concern: Optional[str] = None
-    expected_result: Optional[str] = None
-    actual_result: Optional[str] = None
-
-class ExperienceResponse(BaseModel):
-    id: int
-    user_id: int
-    product_id: int
-    product_name: str
-    brand: str
-    natural_language_feedback: str
-    duration_weeks: int
-    frequency_used: str
-    primary_concern: Optional[str]
-    expected_result: Optional[str]
-    actual_result: Optional[str]
-    positive_outcomes: List[str]
-    negative_outcomes: List[str]
-    unwanted_reactions: List[str]
-    classification: str
-    ai_working_summary: Optional[str]
-    ai_not_improved_summary: Optional[str]
-    ai_explanations: List[str]
-    ai_questions: List[str]
-    ai_safe_next_steps: List[str]
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# --- Routine Conflict & Compatibility Schemas ---
-class RoutineCheckRequest(BaseModel):
-    product_ids: Optional[List[int]] = None
-    manual_products: Optional[List[Dict[str, Any]]] = None
-    routine_category: Optional[str] = "skincare"
-
-class ConflictCard(BaseModel):
-    id: str
-    title: str
-    risk_level: str  # "caution", "moderate", "high", "info"
-    ingredients: List[str]
-    products_involved: List[str]
-    why: str
-    missing_info: str
-    safe_alternatives: List[str]
-
-class RoutineStep(BaseModel):
-    step_number: int
-    step_name: str
-    product_name: str
-    brand: str
-    product_id: Optional[int] = None
-    recommended_frequency: str
-    application_order_reason: str
-    precautions: str
-    attention_ingredients: List[str]
-    alternate_day_note: Optional[str] = None
-
-class RoutineAnalysisResponse(BaseModel):
+class CompatibilityResponse(BaseModel):
     id: Optional[int] = None
-    routine_category: str
-    overall_score: int
-    score_breakdown: Dict[str, int]
-    identified_conflicts: List[ConflictCard]
-    structured_am_routine: List[RoutineStep]
-    structured_pm_routine: List[RoutineStep]
-    missing_steps: List[Dict[str, str]]
-    disclaimer: str
+    username: str
+    job_title: str
+    company: Optional[str] = None
+    compatibility_score: float  # 0 to 100
+    matched_skills: List[str]
+    demonstrated_skills: List[SkillEvidence]
+    inferred_skills: List[SkillEvidence]
+    missing_skills: List[str]
+    category_breakdown: List[CategoryScore]
+    explanation: str
+    recommendations: List[str]
+    created_at: Optional[datetime.datetime] = None
 
 
-# --- Review Schemas ---
-class ReviewCreate(BaseModel):
-    product_id: int
-    reviewer_name: Optional[str] = "Verified Customer"
-    rating: float
-    review_text: str
-    duration_used: Optional[str] = "1 month"
-    verified_purchase: Optional[bool] = True
-    source: Optional[str] = "community"
-
-class ReviewResponse(BaseModel):
+class CompatibilityHistoryItem(BaseModel):
     id: int
-    product_id: int
-    product_name: str
-    reviewer_name: str
-    rating: float
-    review_text: str
-    sentiment: str
-    aspect_tags: List[str]
-    duration_used: str
-    verified_purchase: bool
-    source: str
-    created_at: datetime
+    username: str
+    job_title: str
+    company: Optional[str] = None
+    compatibility_score: float
+    matched_skills_count: int
+    missing_skills_count: int
+    matched_skills: List[str]
+    missing_skills: List[str]
+    created_at: datetime.datetime
 
     class Config:
         from_attributes = True
 
 
-# --- Timeline Log Schemas ---
-class TimelineLogCreate(BaseModel):
-    product_id: Optional[int] = None
-    week_number: int
-    notes: Optional[str] = None
-    acne_score: float = Field(default=5.0, ge=1.0, le=10.0)
-    dryness_score: float = Field(default=3.0, ge=1.0, le=10.0)
-    irritation_score: float = Field(default=2.0, ge=1.0, le=10.0)
-    hydration_score: float = Field(default=7.0, ge=1.0, le=10.0)
-    satisfaction_score: float = Field(default=8.0, ge=1.0, le=10.0)
+# --- Portfolio Schemas ---
 
-class TimelineLogResponse(BaseModel):
-    id: int
-    user_id: int
-    product_id: Optional[int]
-    week_number: int
-    date_logged: datetime
-    notes: Optional[str]
-    acne_score: float
-    dryness_score: float
-    irritation_score: float
-    hydration_score: float
-    satisfaction_score: float
-
-    class Config:
-        from_attributes = True
+class PortfolioVisibilitySettings(BaseModel):
+    show_heatmap: bool = True
+    show_languages: bool = True
+    show_growth: bool = True
+    show_vibe_check: bool = True
+    show_stats: bool = True
 
 
-# --- AI Assistant Schemas ---
-class AssistantQueryRequest(BaseModel):
+class PortfolioSettingsUpdate(BaseModel):
+    headline: Optional[str] = None
+    introduction: Optional[str] = None
+    custom_bio: Optional[str] = None
+    contact_email: Optional[str] = None
+    social_links: Optional[Dict[str, str]] = None
+    featured_repositories: Optional[List[str]] = None  # repo names
+    visibility_settings: Optional[PortfolioVisibilitySettings] = None
+
+
+class PublicPortfolioResponse(BaseModel):
+    username: str
+    headline: str
+    introduction: str
+    custom_bio: Optional[str] = None
+    contact_email: Optional[str] = None
+    social_links: Dict[str, str]
+    profile: GitHubProfileResponse
+    featured_repositories: List[RepositoryResponse]
+    all_repositories: List[RepositoryResponse]
+    languages: LanguageAnalyticsResponse
+    contributions: Optional[ContributionResponse] = None
+    growth_insights: Optional[GrowthInsightsResponse] = None
+    latest_vibe_check: Optional[CompatibilityResponse] = None
+    visibility_settings: PortfolioVisibilitySettings
+    share_url: str
+    updated_at: datetime.datetime
+
+
+# --- Common Status / Health ---
+
+class RefreshResponse(BaseModel):
+    success: bool
     message: str
-    context_type: Optional[str] = "all"  # routine, experience, product, all
-
-class AssistantResponse(BaseModel):
-    response: str
-    citations: List[Dict[str, str]]
-    suggested_followups: List[str]
-    non_diagnostic_notice: str
-    source: Optional[str] = "gemini"  # "gemini" or "fallback"
-    model: Optional[str] = None
-    error: Optional[str] = None
-
-class GeminiHealthResponse(BaseModel):
-    status: str
-    configured: bool
-    connected: bool
-    model: str
-    message: str
-    error: Optional[str] = None
-    sample_output: Optional[str] = None
-
-
-# --- OCR Schemas ---
-class OCRRequest(BaseModel):
-    image_base64: Optional[str] = None
-    image_url: Optional[str] = None
-    raw_text: Optional[str] = None
-
-class OCRResponse(BaseModel):
-    detected_text: str
-    identified_ingredients: List[str]
-    active_compounds: List[Dict[str, str]]
-    potential_sensitizers: List[str]
-    cleanliness_score: int
+    username: str
+    synced_at: datetime.datetime

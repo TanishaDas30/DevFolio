@@ -1,6 +1,7 @@
-import json
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Boolean, Float, DateTime, ForeignKey
+import datetime
+from sqlalchemy import (
+    Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, JSON, UniqueConstraint
+)
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -8,204 +9,119 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String(255), unique=True, index=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
-    full_name = Column(String(255), nullable=False)
-    role = Column(String(50), default="user")  # "user" or "admin"
-    
-    # Skin profile
-    skin_type = Column(String(100), default="Combination")  # Oily, Dry, Combination, Sensitive, Normal
-    skin_concerns = Column(Text, default="[]")  # JSON list
-    
-    # Hair & Scalp profile
-    hair_type = Column(String(100), default="Wavy / Medium")
-    scalp_type = Column(String(100), default="Oily Scalp")
-    hair_concerns = Column(Text, default="[]")  # JSON list
-    
-    created_at = Column(DateTime, default=datetime.utcnow)
+    github_username = Column(String(100), unique=True, index=True, nullable=False)
+    name = Column(String(200), nullable=True)
+    avatar_url = Column(String(500), nullable=True)
+    bio = Column(Text, nullable=True)
+    company = Column(String(200), nullable=True)
+    location = Column(String(200), nullable=True)
+    blog = Column(String(500), nullable=True)
+    twitter_username = Column(String(100), nullable=True)
+    public_repos = Column(Integer, default=0)
+    public_gists = Column(Integer, default=0)
+    followers = Column(Integer, default=0)
+    following = Column(Integer, default=0)
+    total_stars = Column(Integer, default=0)
+    total_forks = Column(Integer, default=0)
+    developer_score = Column(Float, default=0.0)
+    profile_data = Column(JSON, default=dict)  # raw profile metadata
+    last_synced_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-    user_products = relationship("UserProduct", back_populates="user", cascade="all, delete-orphan")
-    experiences = relationship("ProductExperience", back_populates="user", cascade="all, delete-orphan")
-    routine_analyses = relationship("RoutineAnalysis", back_populates="user", cascade="all, delete-orphan")
-    timeline_logs = relationship("TimelineLog", back_populates="user", cascade="all, delete-orphan")
-    reviews = relationship("ProductReview", back_populates="user", cascade="all, delete-orphan")
-
-    def get_skin_concerns(self):
-        try:
-            return json.loads(self.skin_concerns)
-        except Exception:
-            return []
-
-    def get_hair_concerns(self):
-        try:
-            return json.loads(self.hair_concerns)
-        except Exception:
-            return []
+    # Relationships
+    repositories = relationship("Repository", back_populates="user", cascade="all, delete-orphan")
+    contributions = relationship("ContributionData", back_populates="user", cascade="all, delete-orphan")
+    portfolio_settings = relationship("PortfolioSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    job_analyses = relationship("JobAnalysis", back_populates="user", cascade="all, delete-orphan")
 
 
-class Product(Base):
-    __tablename__ = "products"
+class Repository(Base):
+    __tablename__ = "repositories"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False, index=True)
-    brand = Column(String(150), default="Be Bodywise", index=True)
-    category = Column(String(50), nullable=False)  # "skincare", "haircare", "bodycare"
-    subcategory = Column(String(100), nullable=True)  # Cleanser, Serum, Moisturizer, Roll-on, Shampoo, etc.
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    github_repo_id = Column(Integer, nullable=True, index=True)
+    name = Column(String(200), nullable=False)
+    full_name = Column(String(300), nullable=True)
     description = Column(Text, nullable=True)
-    
-    # Active ingredients stored as JSON array: [{"name": "Salicylic Acid", "percentage": "1%", "purpose": "BHA exfoliant"}]
-    active_ingredients = Column(Text, default="[]")
-    full_ingredients = Column(Text, default="")
-    
-    instructions = Column(Text, nullable=True)
-    precautions = Column(Text, nullable=True)
-    pH_level = Column(String(50), default="5.5")
-    recommended_time = Column(String(50), default="PM")  # AM, PM, BOTH
-    frequency = Column(String(100), default="Daily")      # Daily, 2-3 times/week, Alternate days
-    is_verified = Column(Boolean, default=True)
-    image_url = Column(String(500), nullable=True)
-    
-    user_products = relationship("UserProduct", back_populates="product")
-    experiences = relationship("ProductExperience", back_populates="product")
-    reviews = relationship("ProductReview", back_populates="product")
+    language = Column(String(100), nullable=True, index=True)
+    stars = Column(Integer, default=0, index=True)
+    forks = Column(Integer, default=0)
+    open_issues = Column(Integer, default=0)
+    watchers = Column(Integer, default=0)
+    topics = Column(JSON, default=list)
+    is_fork = Column(Boolean, default=False)
+    is_archived = Column(Boolean, default=False)
+    updated_at = Column(DateTime, nullable=True)
+    created_at_gh = Column(DateTime, nullable=True)
+    pushed_at = Column(DateTime, nullable=True)
+    repository_url = Column(String(500), nullable=False)
+    homepage = Column(String(500), nullable=True)
+    byte_languages = Column(JSON, default=dict)  # {"Python": 124500, "TypeScript": 45000}
+    cached_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-    def get_active_ingredients(self):
-        try:
-            return json.loads(self.active_ingredients)
-        except Exception:
-            return []
+    user = relationship("User", back_populates="repositories")
 
-
-class UserProduct(Base):
-    __tablename__ = "user_products"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
-    
-    is_active = Column(Boolean, default=True)
-    purchased_for_concern = Column(String(200), nullable=True)
-    application_time = Column(String(50), default="PM")  # AM, PM, BOTH
-    frequency = Column(String(100), default="Daily")
-    custom_order = Column(Integer, default=1)
-    notes = Column(Text, nullable=True)
-    added_at = Column(DateTime, default=datetime.utcnow)
-
-    user = relationship("User", back_populates="user_products")
-    product = relationship("Product", back_populates="user_products")
-    experiences = relationship("ProductExperience", back_populates="user_product")
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_user_repo_name"),
+    )
 
 
-class ProductExperience(Base):
-    __tablename__ = "product_experiences"
+class ContributionData(Base):
+    __tablename__ = "contribution_data"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
-    user_product_id = Column(Integer, ForeignKey("user_products.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    contribution_date = Column(String(10), nullable=False, index=True)  # YYYY-MM-DD
+    contribution_count = Column(Integer, default=0)
+    weekday = Column(Integer, default=0)  # 0: Sun ... 6: Sat
+    intensity = Column(Integer, default=0)  # 0 to 4
 
-    natural_language_feedback = Column(Text, nullable=False)
-    duration_weeks = Column(Integer, default=3)
-    frequency_used = Column(String(100), default="Daily")
-    
-    primary_concern = Column(String(200), nullable=True)
-    expected_result = Column(String(255), nullable=True)
-    actual_result = Column(String(255), nullable=True)
+    user = relationship("User", back_populates="contributions")
 
-    # JSON stored fields
-    positive_outcomes = Column(Text, default="[]")    # JSON list of strings
-    negative_outcomes = Column(Text, default="[]")    # JSON list of strings
-    unwanted_reactions = Column(Text, default="[]")   # JSON list of strings
-    classification = Column(String(50), default="mixed") # "positive", "mixed", "negative", "neutral"
-
-    # AI Generated Explanations & Report
-    ai_working_summary = Column(Text, nullable=True)
-    ai_not_improved_summary = Column(Text, nullable=True)
-    ai_explanations = Column(Text, default="[]")      # JSON list of hypotheses
-    ai_questions = Column(Text, default="[]")         # JSON list of reflection questions
-    ai_safe_next_steps = Column(Text, default="[]")   # JSON list of actionable instructions
-
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    user = relationship("User", back_populates="experiences")
-    product = relationship("Product", back_populates="experiences")
-    user_product = relationship("UserProduct", back_populates="experiences")
+    __table_args__ = (
+        UniqueConstraint("user_id", "contribution_date", name="uq_user_contribution_date"),
+    )
 
 
-class RoutineAnalysis(Base):
-    __tablename__ = "routine_analyses"
+class PortfolioSettings(Base):
+    __tablename__ = "portfolio_settings"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    routine_category = Column(String(50), default="skincare") # "skincare" or "haircare"
-    
-    overall_score = Column(Integer, default=85) # 0 to 100
-    score_breakdown = Column(Text, default="{}") # JSON: duplication, overlap, complexity, precautions, missing_info
-    
-    # Conflict cards: JSON list of { title, risk_level, ingredients, products_involved, why, missing_info, safe_alternatives }
-    identified_conflicts = Column(Text, default="[]")
-    
-    # Structured routines
-    structured_am_routine = Column(Text, default="[]") # JSON list of ordered steps with timing, frequency, precautions
-    structured_pm_routine = Column(Text, default="[]") # JSON list of ordered steps
-    missing_steps = Column(Text, default="[]")         # JSON list of recommendations (e.g. missing SPF or moisturizer)
-    
-    created_at = Column(DateTime, default=datetime.utcnow)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    headline = Column(String(300), default="Full-Stack Engineer & Open Source Contributor")
+    introduction = Column(Text, default="Passionate developer turning complex problems into elegant, high-impact digital experiences.")
+    custom_bio = Column(Text, nullable=True)
+    contact_email = Column(String(200), nullable=True)
+    social_links = Column(JSON, default=lambda: {"twitter": "", "linkedin": "", "website": ""})
+    featured_repositories = Column(JSON, default=list)  # list of repo names or IDs to pin
+    visibility_settings = Column(JSON, default=lambda: {
+        "show_heatmap": True,
+        "show_languages": True,
+        "show_growth": True,
+        "show_vibe_check": True,
+        "show_stats": True
+    })
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
-    user = relationship("User", back_populates="routine_analyses")
-
-
-class ProductReview(Base):
-    __tablename__ = "product_reviews"
-
-    id = Column(Integer, primary_key=True, index=True)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    
-    reviewer_name = Column(String(150), default="Anonymous Verified Customer")
-    rating = Column(Float, default=4.5)
-    review_text = Column(Text, nullable=False)
-    sentiment = Column(String(50), default="positive") # positive, negative, mixed
-    
-    # NLP aspect classifications: JSON list of strings (e.g. ["effectiveness", "dryness", "texture"])
-    aspect_tags = Column(Text, default="[]")
-    duration_used = Column(String(100), default="1 month")
-    verified_purchase = Column(Boolean, default=True)
-    source = Column(String(100), default="official_store") # official_store, community, survey, uploaded_screenshot
-    
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    product = relationship("Product", back_populates="reviews")
-    user = relationship("User", back_populates="reviews")
+    user = relationship("User", back_populates="portfolio_settings")
 
 
-class TimelineLog(Base):
-    __tablename__ = "timeline_logs"
+class JobAnalysis(Base):
+    __tablename__ = "job_analyses"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
-    
-    week_number = Column(Integer, default=1)
-    date_logged = Column(DateTime, default=datetime.utcnow)
-    notes = Column(Text, nullable=True)
-    
-    # Quantitative outcome tracking (1 to 10 or 0 to 100)
-    acne_score = Column(Float, default=5.0)       # 1=clear, 10=severe
-    dryness_score = Column(Float, default=3.0)    # 1=hydrated, 10=extremely dry
-    irritation_score = Column(Float, default=2.0) # 1=calm, 10=inflamed
-    hydration_score = Column(Float, default=7.0)  # 1=parched, 10=dewy
-    satisfaction_score = Column(Float, default=8.0) # 1=unhappy, 10=delighted
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_title = Column(String(200), default="Software Engineering Role")
+    company = Column(String(200), nullable=True)
+    job_description = Column(Text, nullable=False)
+    compatibility_score = Column(Float, nullable=False)  # 0.0 to 100.0
+    matched_skills = Column(JSON, default=list)  # list of matched tech names
+    demonstrated_skills = Column(JSON, default=list)  # verified from code/repos
+    inferred_skills = Column(JSON, default=list)  # inferred from topics/descriptions
+    missing_skills = Column(JSON, default=list)  # missing required tech
+    category_breakdown = Column(JSON, default=dict)  # e.g. {"Languages": 85, "Frameworks": 60, ...}
+    explanation = Column(Text, nullable=True)
+    recommendations = Column(JSON, default=list)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-    user = relationship("User", back_populates="timeline_logs")
-
-
-class AssistantMessage(Base):
-    __tablename__ = "assistant_messages"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    message = Column(Text, nullable=False)
-    response = Column(Text, nullable=False)
-    citations = Column(Text, default="[]") # JSON list of product references or ingredient docs
-    created_at = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User", back_populates="job_analyses")

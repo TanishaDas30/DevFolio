@@ -1,24 +1,43 @@
 # Dependencies
 node_modules/
+frontend/node_modules/
 __pycache__/
+*.py[cod]
+*$py.class
 *.pyc
 
-# Production Builds
-dist/
-build/
-.output/
-
-# Environment Variables & Local Secrets
+# Environments & Virtual Envs
 .env
 .env.*
 backend/.env
 backend/.env.*
 *.env
 *.env.local
+venv/
+.venv/
+env/
+ENV/
 
-# Databases & Runtime Logs
+# Production Builds & Bundles
+dist/
+build/
+frontend/dist/
+.output/
+
+# Databases & Runtime Data
 *.db
+*.sqlite
 *.sqlite3
+devfolio.db
+backend/devfolio.db
+backend/*.db
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs & Temporary Files
 *.log
 .system_generated/
 .tmp/
